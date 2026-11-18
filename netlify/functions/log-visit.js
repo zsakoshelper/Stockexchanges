@@ -8,16 +8,26 @@ exports.handler = async (event) => {
     const referer    = event.headers['referer']    || 'direct';
     const timestamp  = new Date().toISOString();
 
-    console.log(JSON.stringify({
-        type: 'VISIT',
-        timestamp,
-        ip,
-        userAgent,
-        referer
-    }));
+    // Discord webhook küldés
+    const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1572721779368005824/T-tHCkf9n0pJfNwJOWROntdvYLZKawYkP4d0AbYjtJ3_3TFaSlClJhhEbs2TxgAwtz0f';
 
-    return {
-        statusCode: 200,
-        body: JSON.stringify({ logged: true })
-    };
+    await fetch(DISCORD_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            embeds: [{
+                title: '🌐 Új látogató!',
+                color: 0xf0b429,
+                fields: [
+                    { name: '📍 IP-cím',    value: ip,        inline: true },
+                    { name: '🕒 Időpont',   value: timestamp, inline: true },
+                    { name: '🌍 Referer',   value: referer,   inline: false },
+                    { name: '📱 Eszköz',    value: userAgent.substring(0,80), inline: false }
+                ]
+            }]
+        })
+    });
+
+    return { statusCode: 200, body: JSON.stringify({ logged: true }) };
 };
+
