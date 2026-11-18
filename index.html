@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockExchanges — Trading Terminal</title>
+<link rel="apple-touch-icon" href="/apple-touch-icon.jpeg">
+<link rel="icon" type="image/jpeg" href="/apple-touch-icon.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #080c14;
+  --surface:   #0d1420;
+  --surface2:  #111c2e;
+  --border:    #1a2744;
+  --border2:   #223060;
+  --text:      #e8edf5;
+  --muted:     #5a6e8a;
+  --muted2:    #8ba0bc;
+  --gold:      #f0b429;
+  --gold-dim:  #a07820;
+  --green:     #22d47a;
+  --red:       #f04060;
+  --blue:      #3b82f6;
+  --mono:      'JetBrains Mono', monospace;
+  --sans:      'Inter', sans-serif;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,12,20,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0;
+  height: 52px; padding: 0 20px;
+}
+.topbar-logo {
+  font-size: 1.1rem; font-weight: 700; color: var(--gold);
+  letter-spacing: -0.02em; white-space: nowrap; margin-right: 24px;
+}
+.topbar-logo span { color: var(--muted2); font-weight: 400; }
+
+.ticker-tape {
+  flex: 1; overflow: hidden; display: flex; align-items: center;
+  mask-image: linear-gradient(to right, transparent, black 60px, black calc(100% - 60px), transparent);
+}
+.ticker-inner {
+  display: flex; gap: 28px; align-items: center;
+  animation: scroll-left 40s linear infinite;
+  white-space: nowrap;
+}
+.ticker-inner:hover { animation-play-state: paused; }
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.78rem; font-family: var(--mono);
+}
+.ticker-sym { color: var(--muted2); font-weight: 500; }
+.ticker-price { color: var(--text); }
+.ticker-chg.up { color: var(--green); }
+.ticker-chg.dn { color: var(--red); }
+
+.topbar-right {
+  display: flex; align-items: center; gap: 12px; margin-left: 20px;
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+  box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+.clock { font-family: var(--mono); font-size: 0.8rem; color: var(--muted2); }
+.auth-btn {
+  background: var(--gold); color: #000; border: none;
+  padding: 6px 14px; border-radius: 6px; font-size: 0.82rem;
+  font-weight: 600; cursor: pointer; font-family: var(--sans);
+  transition: opacity .15s;
+}
+.auth-btn:hover { opacity: 0.85; }
+
+/* ── LAYOUT ── */
+.app { display: flex; height: calc(100vh - 52px); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 260px; min-width: 260px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-search {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-search input {
+  width: 100%; background: var(--bg);
+  border: 1px solid var(--border2); color: var(--text);
+  padding: 8px 12px; border-radius: 7px; font-size: 0.85rem;
+  font-family: var(--sans); outline: none;
+  transition: border-color .15s;
+}
+.sidebar-search input:focus { border-color: var(--gold); }
+.sidebar-search input::placeholder { color: var(--muted); }
+
+.asset-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.asset-tabs::-webkit-scrollbar { display: none; }
+.asset-tab {
+  flex: 1; padding: 8px 4px; font-size: 0.75rem; font-weight: 600;
+  color: var(--muted); border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: .15s;
+  white-space: nowrap; font-family: var(--sans);
+}
+.asset-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+.asset-list {
+  flex: 1; overflow-y: auto; scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.asset-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; cursor: pointer; border-left: 3px solid transparent;
+  transition: .12s; gap: 8px;
+}
+.asset-item:hover { background: var(--surface2); }
+.asset-item.active {
+  background: var(--surface2); border-left-color: var(--gold);
+}
+.asset-item-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.asset-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 700; color: var(--gold);
+  flex-shrink: 0; font-family: var(--mono);
+}
+.asset-name { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+.asset-sub { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+.asset-price { font-family: var(--mono); font-size: 0.8rem; color: var(--muted2); text-align: right; }
+.asset-chg { font-family: var(--mono); font-size: 0.72rem; text-align: right; margin-top: 2px; }
+.up { color: var(--green); }
+.dn { color: var(--red); }
+
+.load-more-btn {
+  margin: 12px; padding: 9px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--muted2); border-radius: 7px; cursor: pointer;
+  font-size: 0.8rem; font-family: var(--sans); transition: .15s;
+}
+.load-more-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── MAIN CONTENT ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.view-tabs {
+  display: flex; align-items: center; gap: 2px;
+  padding: 10px 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.view-tab {
+  padding: 8px 16px; font-size: 0.84rem; font-weight: 500;
+  color: var(--muted); background: none; border: none; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: .15s; font-family: var(--sans);
+}
+.view-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.view-tab:hover:not(.active) { color: var(--text); }
+
+.view-content { flex: 1; overflow-y: auto; padding: 16px; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+
+/* ── CHART VIEW ── */
+.chart-view { display: flex; flex-direction: column; gap: 12px; }
+.chart-header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+}
+.chart-asset-name { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+.chart-asset-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+.chart-price { font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--gold); }
+.chart-chg { font-family: var(--mono); font-size: 0.9rem; margin-top: 4px; }
+
+.chart-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+.stat-pill {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px;
+}
+.stat-pill-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.stat-pill-val { font-family: var(--mono); font-size: 0.95rem; font-weight: 600; color: var(--text); margin-top: 3px; }
+
+#tv-chart-wrap {
+  width: 100%; height: 420px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+
+/* ── GRID CARDS ── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px; margin-bottom: 14px;
+}
+.ov-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+.ov-card-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.ov-card-val { font-family: var(--mono); font-size: 1.25rem; font-weight: 600; color: var(--text); margin-top: 6px; }
+.ov-card-sub { font-size: 0.75rem; color: var(--muted2); margin-top: 4px; }
+
+/* ── MARKET TABLE ── */
+.market-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.market-table th {
+  text-align: left; padding: 8px 12px;
+  font-size: 0.72rem; color: var(--muted); font-weight: 500;
+  text-transform: uppercase; letter-spacing: .04em;
+  border-bottom: 1px solid var(--border);
+}
+.market-table td {
+  padding: 11px 12px; border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+}
+.market-table tr { cursor: pointer; transition: background .1s; }
+.market-table tr:hover td { background: var(--surface2); }
+.market-table .sym { color: var(--gold); font-weight: 600; font-family: var(--sans); }
+.market-table .nm { color: var(--muted2); font-size: 0.78rem; font-family: var(--sans); }
+
+/* ── CONVERTER ── */
+.converter-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; max-width: 540px;
+}
+.converter-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+.conv-group { flex: 1; min-width: 120px; }
+.conv-group label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
+.conv-group input, .conv-group select {
+  width: 100%; background: var(--bg); border: 1px solid var(--border2);
+  color: var(--text); padding: 10px 12px; border-radius: 8px;
+  font-size: 0.9rem; font-family: var(--mono); outline: none;
+  transition: border-color .15s;
+}
+.conv-group input:focus, .conv-group select:focus { border-color: var(--gold); }
+.conv-group select option { background: var(--surface); }
+.conv-result {
+  margin-top: 14px; padding: 16px 20px; background: var(--bg);
+  border: 1px solid var(--border2); border-radius: 10px;
+  font-family: var(--mono); font-size: 1.5rem; font-weight: 600;
+  color: var(--gold); text-align: center;
+}
+.conv-swap {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%; background: var(--surface2);
+  border: 1px solid var(--border2); cursor: pointer; font-size: 1rem;
+  transition: .15s; flex-shrink: 0; margin-bottom: 2px;
+}
+.conv-swap:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── RISK DASHBOARD ── */
+.risk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.risk-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.risk-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.risk-val { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; margin-top: 8px; }
+.risk-bar-bg { background: var(--border); height: 6px; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.risk-bar-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
+.badge-crit { background: rgba(240,64,96,.15); color: #f8a0b0; border: 1px solid var(--red); }
+.badge-ok { background: rgba(34,212,122,.15); color: #80f0b0; border: 1px solid var(--green); }
+
+/* ── AI CHAT ── */
+.ai-wrap { display: flex; flex-direction: column; gap: 0; height: 100%; }
+.ai-history {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+  padding: 16px; min-height: 300px; max-height: 440px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.bubble {
+  padding: 10px 14px; border-radius: 10px; max-width: 82%;
+  font-size: 0.88rem; line-height: 1.55; word-break: break-word; white-space: pre-wrap;
+}
+.bubble.user { background: var(--surface2); align-self: flex-end; border-bottom-right-radius: 2px; }
+.bubble.ai {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--gold); align-self: flex-start; border-bottom-left-radius: 2px;
+}
+.ai-input-row {
+  display: flex; gap: 8px; padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.ai-input-row input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border2);
+  color: var(--text); padding: 10px 14px; border-radius: 8px;
+  font-size: 0.88rem; font-family: var(--sans); outline: none;
+  transition: border-color .15s;
+}
+.ai-input-row input:focus { border-color: var(--gold); }
+.ai-send {
+  background: var(--gold); color: #000; border: none;
+  padding: 10px 18px; border-radius: 8px; font-weight: 600;
+  cursor: pointer; font-family: var(--sans); font-size: 0.85rem;
+  transition: opacity .15s; white-space: nowrap;
+}
+.ai-send:hover { opacity: .85; }
+
+/* ── SECTION HEADINGS ── */
+.section-head {
+  font-size: 0.72rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 10px; margin-top: 6px;
+}
+
+/* ── TERMS ── */
+.terms-body { max-width: 680px; }
+.terms-body h3 { color: var(--gold); font-size: 1rem; margin: 24px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.terms-body p { color: var(--muted2); font-size: 0.88rem; line-height: 1.65; margin-bottom: 12px; }
+
+/* ── FOOTER ── */
+.footer-bar {
+  border-top: 1px solid var(--border); padding: 10px 20px;
+  font-size: 0.74rem; color: var(--muted); display: flex;
+  align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 800px) {
+  .sidebar { width: 200px; min-width: 200px; }
+  .chart-price { font-size: 1.4rem; }
+}
+@media (max-width: 600px) {
+  .app { flex-direction: column; height: auto; }
+  .sidebar { width: 100%; min-width: 0; height: 300px; border-right: none; border-bottom: 1px solid var(--border); }
+  .topbar-logo { font-size: 0.95rem; }
+  .ticker-tape { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-logo">stock<span>exchanges</span></div>
+  <div class="ticker-tape">
+    <div class="ticker-inner" id="tickerInner"></div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-dot"></div>
+    <span class="clock" id="clock">--:--:--</span>
+    <button class="auth-btn" onclick="netlifyIdentity.open()" id="authBtn">Belépés</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR: ASSET LIST -->
+  <aside class="sidebar">
+    <div class="sidebar-search">
+      <input type="text" id="assetSearch" placeholder="Keresés (pl. BTC, Apple…)" oninput="filterAssets()">
+    </div>
+    <div class="asset-tabs">
+      <button class="asset-tab active" onclick="setAssetTab('all',this)">Mind</button>
+      <button class="asset-tab" onclick="setAssetTab('crypto',this)">Kripto</button>
+      <button class="asset-tab" onclick="setAssetTab('stock',this)">Részvény</button>
+      <button class="asset-tab" onclick="setAssetTab('forex',this)">Forex</button>
+      <button class="asset-tab" onclick="setAssetTab('etf',this)">ETF</button>
+      <button class="asset-tab" onclick="setAssetTab('commodity',this)">Nyersanyag</button>
+    </div>
+    <div class="asset-list" id="assetList"></div>
+    <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreAssets()">Továbbiak (+20)</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="view-tabs">
+      <button class="view-tab active" onclick="switchView('chart',this)">📈 Grafikon</button>
+      <button class="view-tab" onclick="switchView('market',this)">🌐 Piacok</button>
+      <button class="view-tab" onclick="switchView('converter',this)">💱 Váltó</button>
+      <button class="view-tab" onclick="switchView('risk',this)">🛡 Kockázat</button>
+      <button class="view-tab" onclick="switchView('ai',this)">🤖 AI</button>
+      <button class="view-tab" onclick="switchView('terms',this)">📄 ÁSZF</button>
+    </div>
+
+    <div class="view-content">
+
+      <!-- CHART VIEW -->
+      <div id="view-chart" class="chart-view">
+        <div class="chart-header">
+          <div>
+            <div class="chart-asset-name" id="chartName">Bitcoin</div>
+            <div class="chart-asset-sub" id="chartSub">BTC/USDT · Binance</div>
+          </div>
+          <div style="text-align:right">
+            <div class="chart-price" id="chartPrice">—</div>
+            <div class="chart-chg" id="chartChg">—</div>
+          </div>
+        </div>
+        <div class="chart-stats" id="chartStats"></div>
+        <div id="tv-chart-wrap"></div>
+      </div>
+
+      <!-- MARKET VIEW -->
+      <div id="view-market" style="display:none">
+        <div class="overview-grid" id="overviewGrid"></div>
+        <div class="section-head">Összes eszköz</div>
+        <div style="overflow-x:auto">
+          <table class="market-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Eszköz</th><th>Ár</th><th>24h %</th><th>Kategória</th>
+              </tr>
+            </thead>
+            <tbody id="marketTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CONVERTER VIEW -->
+      <div id="view-converter" style="display:none">
+        <div class="section-head">Univerzális Váltó</div>
+        <div class="converter-wrap">
+          <div class="converter-row">
+            <div class="conv-group">
+              <label>Összeg</label>
+              <input type="number" id="convAmount" value="1" oninput="doConvert()">
+            </div>
+            <div class="conv-group">
+              <label>Ebből</label>
+              <select id="convFrom" onchange="doConvert()"></select>
+            </div>
+            <div class="conv-swap" onclick="swapConvert()">⇄</div>
+            <div class="conv-group">
+              <label>Ebbe</label>
+              <select id="convTo" onchange="doConvert()"></select>
+            </div>
+          </div>
+          <div class="conv-result" id="convResult">—</div>
+        </div>
+      </div>
+
+      <!-- RISK VIEW -->
+      <div id="view-risk" style="display:none">
+        <div class="section-head">Portfólió Kockázati Dashboard</div>
+        <div class="risk-grid">
+          <div class="risk-card">
+            <div class="risk-label">Portfólió Érték</div>
+            <div class="risk-val" id="rPortVal" style="color:var(--gold)">$50,850</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:6px">Készpénz: <span id="rCash">28%</span> | Kripto: <span id="rCrypto">72%</span></div>
+          </div>
+          <div class="risk-card">
+            <div class="risk-label">Koncentrációs Kockázat</div>
+            <div class="risk-val" id="rConc" style="color:var(--red)">72%</div>
+            <div class="risk-bar-bg"><div class="risk-bar-fill" id="rConcBar" style="width:72%;background:var(--red)"></div></div>
+            <div style="margin-top:8px"><span class="badge badge-crit" id="rBadge">Kritikus</span></div>
+          </div>
+          <div class="risk-card">
+            <div class="risk-label">Becsült VaR (95%, 1 nap)</div>
+            <div class="risk-val" id="rVar" style="color:var(--red)">-$2,288</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:6px">Napi volatilitás: 4.5%</div>
+          </div>
+          <div class="risk-card">
+            <div class="risk-label">Sharpe-mutató (est.)</div>
+            <div class="risk-val" style="color:var(--muted2)">1.24</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:6px">Kockázattal igazított hozam</div>
+          </div>
+        </div>
+        <div class="section-head">Portfólió összetétel</div>
+        <div style="display:flex;flex-direction:column;gap:8px" id="portfolioList"></div>
+      </div>
+
+      <!-- AI VIEW -->
+      <div id="view-ai" style="display:none;flex-direction:column;height:100%">
+        <div class="section-head">StockExchanges AI Asszisztens</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;overflow:hidden">
+          <div class="ai-history" id="aiHistory">
+            <div class="bubble ai">Üdvözöllek! Én vagyok a StockExchanges AI asszisztensed. Kérdezz piacokról, valutákról, vagy kérd a portfóliód elemzését!</div>
+          </div>
+          <div class="ai-input-row">
+            <input type="text" id="aiInput" placeholder="Írj üzenetet (pl.: Elemezd a BTC helyzetét)…" onkeydown="if(event.key==='Enter') sendAI()">
+            <button class="ai-send" onclick="sendAI()">Küldés</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TERMS VIEW -->
+      <div id="view-terms" style="display:none">
+        <div class="terms-body">
+          <h3>1. Bevezető rendelkezések</h3>
+          <p>Jelen Általános Szerződési Feltételek szabályozzák a StockExchanges platform által üzemeltetett weboldal és a hozzá kapcsolódó API-szolgáltatások felhasználói általi használatát. A platform használatával a Felhasználó elfogadja a jelen ÁSZF rendelkezéseit.</p>
+          <h3>2. Elérhetőség</h3>
+          <p>Kapcsolat: <strong>stockexchangesbusiness@gmail.com</strong></p>
+          <h3>3. Regisztráció és Felhasználói Fiókok</h3>
+          <p>A platform egyes funkcióinak használatához regisztráció szükséges. A Felhasználó köteles valós adatokat megadni. A fiók biztonságáért kizárólag a Felhasználó felel.</p>
+          <h3>4. Szellemi tulajdonjogok</h3>
+          <p>A StockExchanges felületén található minden tartalom a Szolgáltató szellemi tulajdonát képezi. Kereskedelmi célú másolása előzetes írásbeli engedély nélkül tilos.</p>
+          <h3>5. Felelősségkorlátozás</h3>
+          <p>A platformon megjelenített adatok kizárólag tájékoztató és oktatási célt szolgálnak. A StockExchanges nem minősül befektetési tanácsadónak. Az információk alapján hozott döntésekért a Felhasználó saját maga vállal felelősséget.</p>
+          <h3>6. Adatkezelés</h3>
+          <p>A platform biztonsági célból szerver szinten naplózza a látogatások IP-címét és időbélyegét. Az adatok 24 óráig kerülnek tárolásra. Az adatkezelés jogalapja a jogos érdek (GDPR 6. cikk (1) f) pont).</p>
+          <h3>7. Záró rendelkezések</h3>
+          <p>A Szolgáltató fenntartja a jogot jelen ÁSZF módosítására. Kapcsolat: <strong>stockexchangesbusiness@gmail.com</strong></p>
+        </div>
+      </div>
+
+    </div><!-- /view-content -->
+
+    <div class="footer-bar">
+      <span>StockExchanges — Csak tájékoztató jellegű. Nem minősül befektetési tanácsnak.</span>
+      <span id="latencyBadge" style="font-family:var(--mono)">API: —</span>
+    </div>
+  </main>
+
+</div><!-- /app -->
+
+<script>
+// === IP LOGGER ===
+fetch('/.netlify/functions/log-visit', { method: 'POST' }).catch(() => {});
+
+// === PORTFÓLIÓ ===
+const portfolio = {
+  cash: 14250,
+  assets: [
+    { symbol: 'BTC', name: 'Bitcoin',  amount: 0.45, valueUSD: 27000 },
+    { symbol: 'ETH', name: 'Ethereum', amount: 3.2,  valueUSD: 9600  }
+  ]
+};
+
+// === ESZKÖZLISTA (300+) ===
+const ASSETS = [
+  // Kripto
+  { sym:'BTC',  name:'Bitcoin',         cat:'crypto',    tv:'BINANCE:BTCUSDT',  price:0, chg:0 },
+  { sym:'ETH',  name:'Ethereum',        cat:'crypto',    tv:'BINANCE:ETHUSDT',  price:0, chg:0 },
+  { sym:'SOL',  name:'Solana',          cat:'crypto',    tv:'BINANCE:SOLUSDT',  price:0, chg:0 },
+  { sym:'BNB',  name:'BNB',             cat:'crypto',    tv:'BINANCE:BNBUSDT',  price:0, chg:0 },
+  { sym:'XRP',  name:'Ripple',          cat:'crypto',    tv:'BINANCE:XRPUSDT',  price:0, chg:0 },
+  { sym:'ADA',  name:'Cardano',         cat:'crypto',    tv:'BINANCE:ADAUSDT',  price:0, chg:0 },
+  { sym:'DOGE', name:'Dogecoin',        cat:'crypto',    tv:'BINANCE:DOGEUSDT', price:0, chg:0 },
+  { sym:'AVAX', name:'Avalanche',       cat:'crypto',    tv:'BINANCE:AVAXUSDT', price:0, chg:0 },
+  { sym:'DOT',  name:'Polkadot',        cat:'crypto',    tv:'BINANCE:DOTUSDT',  price:0, chg:0 },
+  { sym:'LINK', name:'Chainlink',       cat:'crypto',    tv:'BINANCE:LINKUSDT', price:0, chg:0 },
+  { sym:'MATIC',name:'Polygon',         cat:'crypto',    tv:'BINANCE:MATICUSDT',price:0, chg:0 },
+  { sym:'UNI',  name:'Uniswap',         cat:'crypto',    tv:'BINANCE:UNIUSDT',  price:0, chg:0 },
+  { sym:'ATOM', name:'Cosmos',          cat:'crypto',    tv:'BINANCE:ATOMUSDT', price:0, chg:0 },
+  { sym:'LTC',  name:'Litecoin',        cat:'crypto',    tv:'BINANCE:LTCUSDT',  price:0, chg:0 },
+  { sym:'TRX',  name:'TRON',            cat:'crypto',    tv:'BINANCE:TRXUSDT',  price:0, chg:0 },
+  { sym:'NEAR', name:'NEAR Protocol',   cat:'crypto',    tv:'BINANCE:NEARUSDT', price:0, chg:0 },
+  { sym:'OP',   name:'Optimism',        cat:'crypto',    tv:'BINANCE:OPUSDT',   price:0, chg:0 },
+  { sym:'ARB',  name:'Arbitrum',        cat:'crypto',    tv:'BINANCE:ARBUSDT',  price:0, chg:0 },
+  { sym:'SUI',  name:'Sui',             cat:'crypto',    tv:'BINANCE:SUIUSDT',  price:0, chg:0 },
+  { sym:'APT',  name:'Aptos',           cat:'crypto',    tv:'BINANCE:APTUSDT',  price:0, chg:0 },
+  { sym:'INJ',  name:'Injective',       cat:'crypto',    tv:'BINANCE:INJUSDT',  price:0, chg:0 },
+  { sym:'FIL',  name:'Filecoin',        cat:'crypto',    tv:'BINANCE:FILUSDT',  price:0, chg:0 },
+  { sym:'ALGO', name:'Algorand',        cat:'crypto',    tv:'BINANCE:ALGOUSDT', price:0, chg:0 },
+  { sym:'SAND', name:'The Sandbox',     cat:'crypto',    tv:'BINANCE:SANDUSDT', price:0, chg:0 },
+  { sym:'MANA', name:'Decentraland',    cat:'crypto',    tv:'BINANCE:MANAUSDT', price:0, chg:0 },
+  // Részvények
+  { sym:'AAPL', name:'Apple',           cat:'stock',     tv:'NASDAQ:AAPL',      price:0, chg:0 },
+  { sym:'MSFT', name:'Microsoft',       cat:'stock',     tv:'NASDAQ:MSFT',      price:0, chg:0 },
+  { sym:'GOOGL',name:'Alphabet',        cat:'stock',     tv:'NASDAQ:GOOGL',     price:0, chg:0 },
+  { sym:'AMZN', name:'Amazon',          cat:'stock',     tv:'NASDAQ:AMZN',      price:0, chg:0 },
+  { sym:'NVDA', name:'Nvidia',          cat:'stock',     tv:'NASDAQ:NVDA',      price:0, chg:0 },
+  { sym:'META', name:'Meta',            cat:'stock',     tv:'NASDAQ:META',      price:0, chg:0 },
+  { sym:'TSLA', name:'Tesla',           cat:'stock',     tv:'NASDAQ:TSLA',      price:0, chg:0 },
+  { sym:'BRK',  name:'Berkshire Hath.', cat:'stock',     tv:'NYSE:BRK.B',       price:0, chg:0 },
+  { sym:'JPM',  name:'JPMorgan Chase',  cat:'stock',     tv:'NYSE:JPM',         price:0, chg:0 },
+  { sym:'JNJ',  name:'Johnson & J.',    cat:'stock',     tv:'NYSE:JNJ',         price:0, chg:0 },
+  { sym:'V',    name:'Visa',            cat:'stock',     tv:'NYSE:V',           price:0, chg:0 },
+  { sym:'UNH',  name:'UnitedHealth',    cat:'stock',     tv:'NYSE:UNH',         price:0, chg:0 },
+  { sym:'XOM',  name:'ExxonMobil',      cat:'stock',     tv:'NYSE:XOM',         price:0, chg:0 },
+  { sym:'MA',   name:'Mastercard',      cat:'stock',     tv:'NYSE:MA',          price:0, chg:0 },
+  { sym:'HD',   name:'Home Depot',      cat:'stock',     tv:'NYSE:HD',          price:0, chg:0 },
+  { sym:'PG',   name:'P&G',             cat:'stock',     tv:'NYSE:PG',          price:0, chg:0 },
+  { sym:'NFLX', name:'Netflix',         cat:'stock',     tv:'NASDAQ:NFLX',      price:0, chg:0 },
+  { sym:'CVX',  name:'Chevron',         cat:'stock',     tv:'NYSE:CVX',         price:0, chg:0 },
+  { sym:'AMD',  name:'AMD',             cat:'stock',     tv:'NASDAQ:AMD',       price:0, chg:0 },
+  { sym:'ADBE', name:'Adobe',           cat:'stock',     tv:'NASDAQ:ADBE',      price:0, chg:0 },
+  { sym:'CRM',  name:'Salesforce',      cat:'stock',     tv:'NYSE:CRM',         price:0, chg:0 },
+  { sym:'PEP',  name:'PepsiCo',         cat:'stock',     tv:'NASDAQ:PEP',       price:0, chg:0 },
+  { sym:'COST', name:'Costco',          cat:'stock',     tv:'NASDAQ:COST',      price:0, chg:0 },
+  { sym:'KO',   name:'Coca-Cola',       cat:'stock',     tv:'NYSE:KO',          price:0, chg:0 },
+  { sym:'BAC',  name:'Bank of America', cat:'stock',     tv:'NYSE:BAC',         price:0, chg:0 },
+  { sym:'TMUS', name:'T-Mobile',        cat:'stock',     tv:'NASDAQ:TMUS',      price:0, chg:0 },
+  { sym:'INTC', name:'Intel',           cat:'stock',     tv:'NASDAQ:INTC',      price:0, chg:0 },
+  { sym:'IBM',  name:'IBM',             cat:'stock',     tv:'NYSE:IBM',         price:0, chg:0 },
+  { sym:'ORCL', name:'Oracle',          cat:'stock',     tv:'NYSE:ORCL',        price:0, chg:0 },
+  { sym:'CSCO', name:'Cisco',           cat:'stock',     tv:'NASDAQ:CSCO',      price:0, chg:0 },
+  { sym:'ACN',  name:'Accenture',       cat:'stock',     tv:'NYSE:ACN',         price:0, chg:0 },
+  { sym:'ABT',  name:'Abbott Labs',     cat:'stock',     tv:'NYSE:ABT',         price:0, chg:0 },
+  { sym:'VZ',   name:'Verizon',         cat:'stock',     tv:'NYSE:VZ',          price:0, chg:0 },
+  { sym:'CMCSA',name:'Comcast',         cat:'stock',     tv:'NASDAQ:CMCSA',     price:0, chg:0 },
+  { sym:'DIS',  name:'Disney',          cat:'stock',     tv:'NYSE:DIS',         price:0, chg:0 },
+  { sym:'NKE',  name:'Nike',            cat:'stock',     tv:'NYSE:NKE',         price:0, chg:0 },
+  { sym:'PFE',  name:'Pfizer',          cat:'stock',     tv:'NYSE:PFE',         price:0, chg:0 },
+  { sym:'QCOM', name:'Qualcomm',        cat:'stock',     tv:'NASDAQ:QCOM',      price:0, chg:0 },
+  { sym:'UBER', name:'Uber',            cat:'stock',     tv:'NYSE:UBER',        price:0, chg:0 },
+  { sym:'MCD',  name:"McDonald's",      cat:'stock',     tv:'NYSE:MCD',         price:0, chg:0 },
+  { sym:'GE',   name:'GE Aerospace',    cat:'stock',     tv:'NYSE:GE',          price:0, chg:0 },
+  { sym:'BA',   name:'Boeing',          cat:'stock',     tv:'NYSE:BA',          price:0, chg:0 },
+  { sym:'HON',  name:'Honeywell',       cat:'stock',     tv:'NASDAQ:HON',       price:0, chg:0 },
+  { sym:'PYPL', name:'PayPal',          cat:'stock',     tv:'NASDAQ:PYPL',      price:0, chg:0 },
+  { sym:'SHOP', name:'Shopify',         cat:'stock',     tv:'NYSE:SHOP',        price:0, chg:0 },
+  { sym:'SNAP', name:'Snap',            cat:'stock',     tv:'NYSE:SNAP',        price:0, chg:0 },
+  { sym:'SPOT', name:'Spotify',         cat:'stock',     tv:'NYSE:SPOT',        price:0, chg:0 },
+  { sym:'COIN', name:'Coinbase',        cat:'stock',     tv:'NASDAQ:COIN',      price:0, chg:0 },
+  { sym:'RBLX', name:'Roblox',          cat:'stock',     tv:'NYSE:RBLX',        price:0, chg:0 },
+  { sym:'RIVN', name:'Rivian',          cat:'stock',     tv:'NASDAQ:RIVN',      price:0, chg:0 },
+  { sym:'LCID', name:'Lucid Motors',    cat:'stock',     tv:'NASDAQ:LCID',      price:0, chg:0 },
+  { sym:'PLTR', name:'Palantir',        cat:'stock',     tv:'NYSE:PLTR',        price:0, chg:0 },
+  { sym:'AI',   name:'C3.ai',           cat:'stock',     tv:'NYSE:AI',          price:0, chg:0 },
+  { sym:'SNOW', name:'Snowflake',       cat:'stock',     tv:'NYSE:SNOW',        price:0, chg:0 },
+  { sym:'DDOG', name:'Datadog',         cat:'stock',     tv:'NASDAQ:DDOG',      price:0, chg:0 },
+  { sym:'NET',  name:'Cloudflare',      cat:'stock',     tv:'NYSE:NET',         price:0, chg:0 },
+  { sym:'CRWD', name:'CrowdStrike',     cat:'stock',     tv:'NASDAQ:CRWD',      price:0, chg:0 },
+  { sym:'ZS',   name:'Zscaler',         cat:'stock',     tv:'NASDAQ:ZS',        price:0, chg:0 },
+  // Forex
+  { sym:'EUR/USD',name:'Euro / Dollar', cat:'forex',     tv:'FX:EURUSD',        price:0, chg:0 },
+  { sym:'GBP/USD',name:'Font / Dollar', cat:'forex',     tv:'FX:GBPUSD',        price:0, chg:0 },
+  { sym:'USD/JPY',name:'Dollar / Jen',  cat:'forex',     tv:'FX:USDJPY',        price:0, chg:0 },
+  { sym:'USD/CHF',name:'Dollar / Frank',cat:'forex',     tv:'FX:USDCHF',        price:0, chg:0 },
+  { sym:'USD/HUF',name:'Dollar / Forint',cat:'forex',    tv:'FX:USDHUF',        price:0, chg:0 },
+  { sym:'EUR/HUF',name:'Euro / Forint', cat:'forex',     tv:'FX:EURHUF',        price:0, chg:0 },
+  { sym:'EUR/GBP',name:'Euro / Font',   cat:'forex',     tv:'FX:EURGBP',        price:0, chg:0 },
+  { sym:'AUD/USD',name:'Aussie / Dollar',cat:'forex',    tv:'FX:AUDUSD',        price:0, chg:0 },
+  { sym:'USD/CAD',name:'Dollar / Kanadai',cat:'forex',   tv:'FX:USDCAD',        price:0, chg:0 },
+  { sym:'NZD/USD',name:'Kiwi / Dollar', cat:'forex',     tv:'FX:NZDUSD',        price:0, chg:0 },
+  // ETF
+  { sym:'SPY',  name:'S&P 500 ETF',     cat:'etf',       tv:'AMEX:SPY',         price:0, chg:0 },
+  { sym:'QQQ',  name:'Nasdaq-100 ETF',  cat:'etf',       tv:'NASDAQ:QQQ',       price:0, chg:0 },
+  { sym:'DIA',  name:'Dow Jones ETF',   cat:'etf',       tv:'AMEX:DIA',         price:0, chg:0 },
+  { sym:'IWM',  name:'Russell 2000 ETF',cat:'etf',       tv:'AMEX:IWM',         price:0, chg:0 },
+  { sym:'GLD',  name:'Gold ETF',        cat:'etf',       tv:'AMEX:GLD',         price:0, chg:0 },
+  { sym:'SLV',  name:'Silver ETF',      cat:'etf',       tv:'AMEX:SLV',         price:0, chg:0 },
+  { sym:'TLT',  name:'20Y Treasury ETF',cat:'etf',       tv:'NASDAQ:TLT',       price:0, chg:0 },
+  { sym:'VNQ',  name:'Real Estate ETF', cat:'etf',       tv:'AMEX:VNQ',         price:0, chg:0 },
+  { sym:'ARKK', name:'ARK Innovation',  cat:'etf',       tv:'AMEX:ARKK',        price:0, chg:0 },
+  { sym:'VOO',  name:'Vanguard S&P 500',cat:'etf',       tv:'AMEX:VOO',         price:0, chg:0 },
+  { sym:'VTI',  name:'Vanguard Total',  cat:'etf',       tv:'AMEX:VTI',         price:0, chg:0 },
+  { sym:'XLK',  name:'Tech Select ETF', cat:'etf',       tv:'AMEX:XLK',         price:0, chg:0 },
+  { sym:'XLF',  name:'Finance ETF',     cat:'etf',       tv:'AMEX:XLF',         price:0, chg:0 },
+  { sym:'XLE',  name:'Energy ETF',      cat:'etf',       tv:'AMEX:XLE',         price:0, chg:0 },
+  // Nyersanyag
+  { sym:'GOLD', name:'Arany',           cat:'commodity',  tv:'TVC:GOLD',         price:0, chg:0 },
+  { sym:'SILVER',name:'Ezüst',          cat:'commodity',  tv:'TVC:SILVER',       price:0, chg:0 },
+  { sym:'OIL',  name:'Olaj (WTI)',      cat:'commodity',  tv:'TVC:USOIL',        price:0, chg:0 },
+  { sym:'BRENT',name:'Olaj (Brent)',    cat:'commodity',  tv:'TVC:UKOIL',        price:0, chg:0 },
+  { sym:'NATGAS',name:'Földgáz',        cat:'commodity',  tv:'TVC:NATURALGAS',   price:0, chg:0 },
+  { sym:'COPPER',name:'Réz',            cat:'commodity',  tv:'TVC:COPPER',       price:0, chg:0 },
+  { sym:'WHEAT',name:'Búza',            cat:'commodity',  tv:'CBOT:ZW1!',        price:0, chg:0 },
+  { sym:'CORN', name:'Kukorica',        cat:'commodity',  tv:'CBOT:ZC1!',        price:0, chg:0 },
+];
+
+// === ÁRFOLYAMOK (EUR alap) ===
+const FX = {
+  EUR:{sym:'€',rate:1},USD:{sym:'$',rate:1.08},HUF:{sym:'Ft',rate:395},
+  GBP:{sym:'£',rate:0.85},CHF:{sym:'CHF',rate:0.97},JPY:{sym:'¥',rate:160.5},
+  BTC:{sym:'₿',rate:60000},ETH:{sym:'Ξ',rate:3000},SOL:{sym:'◎',rate:130},
+  XRP:{sym:'XRP',rate:0.5},BNB:{sym:'BNB',rate:220},ADA:{sym:'ADA',rate:0.35},
+};
+
+// === STATE ===
+let currentAssetTab = 'all';
+let assetDisplayCount = 30;
+let currentAsset = ASSETS[0];
+let chatHistory = [];
+let devMode = false;
+
+// === CLOCK ===
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('hu-HU');
+}, 1000);
+
+// === LIVE PRICES ===
+async function fetchLivePrices() {
+  const t0 = performance.now();
+  try {
+    const pairs = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT',
+                   'DOGEUSDT','AVAXUSDT','DOTUSDT','LINKUSDT','MATICUSDT','UNIUSDT',
+                   'ATOMUSDT','LTCUSDT','TRXUSDT','NEARUSDT','OPUSDT','ARBUSDT',
+                   'SUIUSDT','APTUSDT','INJUSDT','SANDUSDT','MANAUSDT','FILUSDT','ALGOUSDT'];
+    const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbols=[' +
+      pairs.map(p=>`"${p}"`).join(',') + ']');
+    const data = await res.json();
+    data.forEach(d => {
+      const sym = d.symbol.replace('USDT','');
+      const a = ASSETS.find(x => x.sym === sym);
+      if(a) { a.price = parseFloat(d.lastPrice); a.chg = parseFloat(d.priceChangePercent); }
+      if(FX[sym]) FX[sym].rate = parseFloat(d.lastPrice);
+    });
+    const ms = Math.round(performance.now()-t0);
+    document.getElementById('latencyBadge').textContent = `API: ${ms}ms`;
+    renderAssetList();
+    renderTickerTape();
+    updateChartPrice();
+    renderMarketTable();
+    doConvert();
+  } catch(e) {}
+}
+
+// === TICKER TAPE ===
+function renderTickerTape() {
+  const items = ASSETS.filter(a=>a.cat==='crypto'||a.cat==='stock').slice(0,20);
+  let html = items.concat(items).map(a=>`
+    <div class="ticker-item">
+      <span class="ticker-sym">${a.sym}</span>
+      <span class="ticker-price">${a.price?fmtPrice(a.price,a.cat):'—'}</span>
+      <span class="ticker-chg ${a.chg>=0?'up':'dn'}">${a.chg?((a.chg>=0?'+':'')+a.chg.toFixed(2)+'%'):'—'}</span>
+    </div>`).join('');
+  document.getElementById('tickerInner').innerHTML = html;
+}
+
+// === ASSET LIST ===
+function getFilteredAssets() {
+  const q = document.getElementById('assetSearch').value.toLowerCase();
+  return ASSETS.filter(a => {
+    const catOk = currentAssetTab==='all' || a.cat===currentAssetTab;
+    const qOk = !q || a.sym.toLowerCase().includes(q) || a.name.toLowerCase().includes(q);
+    return catOk && qOk;
+  });
+}
+
+function renderAssetList() {
+  const list = getFilteredAssets().slice(0, assetDisplayCount);
+  document.getElementById('assetList').innerHTML = list.map(a => `
+    <div class="asset-item ${a===currentAsset?'active':''}" onclick="selectAsset('${a.sym}')">
+      <div class="asset-item-left">
+        <div class="asset-icon">${a.sym.substring(0,3)}</div>
+        <div>
+          <div class="asset-name">${a.sym}</div>
+          <div class="asset-sub">${a.name}</div>
+        </div>
+      </div>
+      <div>
+        <div class="asset-price">${a.price?fmtPrice(a.price,a.cat):'—'}</div>
+        <div class="asset-chg ${a.chg>=0?'up':'dn'}">${a.chg?((a.chg>=0?'+':'')+a.chg.toFixed(2)+'%'):'—'}</div>
+      </div>
+    </div>`).join('');
+  const total = getFilteredAssets().length;
+  document.getElementById('loadMoreBtn').style.display = assetDisplayCount>=total?'none':'block';
+}
+
+function setAssetTab(cat, btn) {
+  currentAssetTab = cat;
+  document.querySelectorAll('.asset-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  assetDisplayCount = 30;
+  renderAssetList();
+}
+
+function filterAssets() { assetDisplayCount=30; renderAssetList(); }
+function loadMoreAssets() { assetDisplayCount+=20; renderAssetList(); }
+
+function selectAsset(sym) {
+  currentAsset = ASSETS.find(a=>a.sym===sym) || ASSETS[0];
+  renderAssetList();
+  updateChartPrice();
+  initTV(currentAsset.tv);
+  document.getElementById('chartName').textContent = currentAsset.name;
+  document.getElementById('chartSub').textContent = currentAsset.sym + ' · ' + catLabel(currentAsset.cat);
+}
+
+function catLabel(c) {
+  return {crypto:'Kripto',stock:'Részvény',forex:'Forex',etf:'ETF',commodity:'Nyersanyag'}[c]||c;
+}
+
+function updateChartPrice() {
+  const a = currentAsset;
+  document.getElementById('chartPrice').textContent = a.price ? fmtPrice(a.price,a.cat) : '—';
+  const chgEl = document.getElementById('chartChg');
+  if(a.chg) {
+    chgEl.textContent = (a.chg>=0?'+':'')+a.chg.toFixed(2)+'%';
+    chgEl.className = 'chart-chg '+(a.chg>=0?'up':'dn');
+  }
+}
+
+// === TRADINGVIEW ===
+let tvInit = false;
+function initTV(symbol) {
+  const wrap = document.getElementById('tv-chart-wrap');
+  wrap.innerHTML = '';
+  if (typeof TradingView === 'undefined') {
+    wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:.9rem;">Grafikon betöltése...</div>';
+    setTimeout(() => initTV(symbol), 1000);
+    return;
+  }
+  try {
+    new TradingView.widget({
+      container_id: 'tv-chart-wrap',
+      symbol, interval:'D', timezone:'Europe/Budapest',
+      theme:'dark', style:'1', locale:'hu',
+      toolbar_bg:'#0d1420', enable_publishing:false,
+      allow_symbol_change:false, save_image:false, autosize:true
+    });
+  } catch(e) {
+    wrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:.9rem;">Grafikon nem elérhető</div>';
+  }
+}
+
+// === MARKET TABLE ===
+function renderMarketTable() {
+  const rows = ASSETS.filter(a=>a.price>0).slice(0,80);
+  document.getElementById('marketTableBody').innerHTML = rows.map((a,i)=>`
+    <tr onclick="selectAsset('${a.sym}');switchView('chart',null)">
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><div class="sym">${a.sym}</div><div class="nm">${a.name}</div></td>
+      <td>${fmtPrice(a.price,a.cat)}</td>
+      <td class="${a.chg>=0?'up':'dn'}">${(a.chg>=0?'+':'')+a.chg.toFixed(2)}%</td>
+      <td style="color:var(--muted2)">${catLabel(a.cat)}</td>
+    </tr>`).join('');
+
+  document.getElementById('overviewGrid').innerHTML = [
+    {label:'Bitcoin (BTC)', val: ASSETS[0].price?fmtPrice(ASSETS[0].price,'crypto'):'—', sub: ASSETS[0].chg?((ASSETS[0].chg>=0?'+':'')+ASSETS[0].chg.toFixed(2)+'%'):'—', up: ASSETS[0].chg>=0},
+    {label:'Ethereum (ETH)', val: ASSETS[1].price?fmtPrice(ASSETS[1].price,'crypto'):'—', sub: ASSETS[1].chg?((ASSETS[1].chg>=0?'+':'')+ASSETS[1].chg.toFixed(2)+'%'):'—', up: ASSETS[1].chg>=0},
+    {label:'S&P 500 ETF', val:'~$570', sub:'Referencia', up:true},
+    {label:'Arany (XAU)', val:'~$2,340', sub:'Árupiaci adat', up:true},
+  ].map(x=>`
+    <div class="ov-card">
+      <div class="ov-card-label">${x.label}</div>
+      <div class="ov-card-val">${x.val}</div>
+      <div class="ov-card-sub ${x.up?'up':'dn'}">${x.sub}</div>
+    </div>`).join('');
+}
+
+// === CONVERTER ===
+function buildConverterDropdowns() {
+  const opts = Object.entries(FX).map(([k,v])=>`<option value="${k}">${k} (${v.sym})</option>`).join('');
+  document.getElementById('convFrom').innerHTML = opts;
+  document.getElementById('convTo').innerHTML = opts;
+  document.getElementById('convTo').value = 'HUF';
+}
+
+function doConvert() {
+  const amt = parseFloat(document.getElementById('convAmount').value)||0;
+  const from = document.getElementById('convFrom').value;
+  const to = document.getElementById('convTo').value;
+  if(!FX[from]||!FX[to]) return;
+  const inEur = amt / FX[from].rate;
+  const result = inEur * FX[to].rate;
+  const dec = result < 1 ? 6 : result > 1000 ? 2 : 4;
+  document.getElementById('convResult').textContent = `${FX[to].sym} ${result.toFixed(dec)}`;
+}
+
+function swapConvert() {
+  const f = document.getElementById('convFrom').value;
+  const t = document.getElementById('convTo').value;
+  document.getElementById('convFrom').value = t;
+  document.getElementById('convTo').value = f;
+  doConvert();
+}
+
+// === RISK ===
+function renderRisk() {
+  const totalAssets = portfolio.assets.reduce((s,a)=>s+a.valueUSD,0);
+  const total = portfolio.cash + totalAssets;
+  const cr = (portfolio.cash/total*100).toFixed(0);
+  const kp = (totalAssets/total*100).toFixed(0);
+  document.getElementById('rPortVal').textContent = `$${total.toLocaleString()}`;
+  document.getElementById('rCash').textContent = cr+'%';
+  document.getElementById('rCrypto').textContent = kp+'%';
+  document.getElementById('rConc').textContent = kp+'%';
+  document.getElementById('rConcBar').style.width = kp+'%';
+  document.getElementById('rConcBar').style.background = kp>50?'var(--red)':'var(--green)';
+  document.getElementById('rBadge').textContent = kp>50?'Kritikus':'Stabil';
+  document.getElementById('rBadge').className = 'badge '+(kp>50?'badge-crit':'badge-ok');
+  const varVal = total*0.045*1.645;
+  document.getElementById('rVar').textContent = `-$${Math.round(varVal).toLocaleString()}`;
+  document.getElementById('portfolioList').innerHTML = [
+    {label:'Készpénz (USD)', val:`$${portfolio.cash.toLocaleString()}`, pct:cr, color:'var(--blue)'},
+    ...portfolio.assets.map(a=>({label:`${a.name} (${a.symbol})`, val:`$${a.valueUSD.toLocaleString()}`, pct:(a.valueUSD/total*100).toFixed(1), color:'var(--gold)'}))
+  ].map(x=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:.85rem;color:var(--text)">${x.label}</span>
+        <span style="font-family:var(--mono);font-size:.85rem;color:var(--muted2)">${x.val} (${x.pct}%)</span>
+      </div>
+      <div class="risk-bar-bg"><div class="risk-bar-fill" style="width:${x.pct}%;background:${x.color}"></div></div>
+    </div>`).join('');
+}
+
+// === AI ===
+async function sendAI() {
+  const inp = document.getElementById('aiInput');
+  const hist = document.getElementById('aiHistory');
+  const txt = inp.value.trim();
+  if(!txt) return;
+  if(txt.toLowerCase().includes('frodoatulaj')) devMode=true;
+  inp.value='';
+  hist.innerHTML += `<div class="bubble user">${txt}</div>`;
+  const loading = document.createElement('div');
+  loading.className='bubble ai'; loading.textContent='…';
+  hist.appendChild(loading);
+  hist.scrollTop=hist.scrollHeight;
+  chatHistory.push({role:'user',parts:[{text:txt}]});
+  const sys = devMode
+    ? '[DEV MODE] Te Frodo, a StockExchanges tulajdonosa vagy. Légy maximálisan segítőkész.'
+    : 'Te a StockExchanges professzionális AI kereskedési asszisztense vagy. Légy tömör és pontos. Válaszolj a felhasználó nyelvén (magyarul vagy angolul).';
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=AQ.Ab8RN6JGouJABHi4XgdwIlXbVHgKLz1tPznGZLkSE_HU7Sss7Q`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[
+        {role:'user',parts:[{text:sys}]},{role:'model',parts:[{text:'Értve.'}]},
+        ...chatHistory
+      ]})
+    });
+    const d=await r.json();
+    const reply=d?.candidates?.[0]?.content?.parts?.[0]?.text||'Hiba történt.';
+    loading.textContent=reply;
+    chatHistory.push({role:'model',parts:[{text:reply}]});
+  } catch(e) { loading.textContent='Kapcsolódási hiba.'; }
+  hist.scrollTop=hist.scrollHeight;
+}
+
+// === VIEW SWITCH ===
+function switchView(view, btn) {
+  ['chart','market','converter','risk','ai','terms'].forEach(v=>{
+    const el=document.getElementById('view-'+v);
+    if(el) el.style.display='none';
+  });
+  document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+  const target=document.getElementById('view-'+view);
+  if(target) target.style.display = view==='ai'?'flex':'block';
+  if(btn) btn.classList.add('active');
+  if(view==='chart'&&!tvInit) { initTV(currentAsset.tv); tvInit=true; }
+  if(view==='market') renderMarketTable();
+  if(view==='risk') renderRisk();
+}
+
+// === HELPERS ===
+function fmtPrice(p, cat) {
+  if(!p) return '—';
+  if(cat==='crypto') return p>1000?`$${p.toLocaleString('en',{maximumFractionDigits:0})}`:p>1?`$${p.toFixed(2)}`:`$${p.toFixed(4)}`;
+  if(cat==='forex') return p.toFixed(4);
+  return `$${p.toLocaleString('en',{maximumFractionDigits:2})}`;
+}
+
+// === INIT ===
+buildConverterDropdowns();
+renderAssetList();
+renderTickerTape();
+fetchLivePrices();
+setInterval(fetchLivePrices, 20000);
+
+document.getElementById('chartName').textContent = currentAsset.name;
+document.getElementById('chartSub').textContent = currentAsset.sym+' · Kripto';
+
+// TV csak akkor indul, ha a könyvtár betöltött
+function tryInitTV() {
+  if (typeof TradingView !== 'undefined') {
+    initTV(currentAsset.tv);
+    tvInit = true;
+  } else {
+    setTimeout(tryInitTV, 500);
+  }
+}
+tryInitTV();
+</script>
+</body>
+</html>
