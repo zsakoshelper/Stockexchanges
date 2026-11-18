@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockExchanges - Valós Idejű Kereskedési Terminál</title>
+    
+    <!-- Apple / iPhone főképernyő ikon beállítás -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.jpeg">
+
+    <!-- Böngésző fül ikonok (Favicon) -->
+    <link rel="icon" type="image/jpeg" href="/apple-touch-icon.jpeg">
+    <link rel="shortcut icon" type="image/jpeg" href="/apple-touch-icon.jpeg">
+
+    <!-- TradingView Widget Script -->
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <!-- Netlify Identity Widget -->
+    <script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #121826;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-color: #f59e0b;
+            --border-color: #1e293b;
+            --success-color: #22c55e;
+            --danger-color: #ef4444;
+            --blue-color: #38bdf8;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+            text-transform: lowercase;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .auth-btn {
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .auth-btn:hover {
+            opacity: 0.9;
+        }
+
+        .live-status {
+            font-size: 0.85rem;
+            color: var(--success-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 5px;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success-color);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        select {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .nav-tabs {
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background-color: var(--card-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: 0.2s;
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent-color);
+            color: #000;
+            border-color: var(--accent-color);
+        }
+
+        .terms-link-btn {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px dashed var(--accent-color);
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .terms-link-btn:hover {
+            background-color: rgba(245, 158, 11, 0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+            .terms-link-btn { margin-left: 0; width: 100%; justify-content: center; }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            color: #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rates-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .rate-item {
+            background-color: var(--bg-color);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .rate-name { font-size: 0.85rem; color: #94a3b8; }
+        .rate-value { font-size: 1rem; font-weight: bold; color: var(--text-color); margin-top: 4px; }
+
+        .full-width { grid-column: 1 / -1; }
+
+        .converter-group { margin-bottom: 15px; }
+        .converter-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #94a3b8; }
+        .converter-group input, .converter-group select {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        .result-box {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: var(--bg-color);
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .risk-dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .risk-metric-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .risk-metric-title { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+        .risk-metric-val { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+        .badge-critical { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid var(--danger-color); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        
+        .risk-progress-bg { background: var(--border-color); height: 12px; border-radius: 6px; overflow: hidden; margin-top: 8px; }
+        .risk-progress-fill { height: 100%; transition: width 0.4s ease; }
+
+        #ai-assistant-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+        }
+        #ai-user-input {
+            width: calc(100% - 140px);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            margin-right: 10px;
+            box-sizing: border-box;
+        }
+        @media (max-width: 600px) {
+            #ai-user-input { width: 100%; margin-bottom: 10px; margin-right: 0; }
+        }
+        #ai-btn {
+            padding: 10px 20px;
+            background: var(--accent-color);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        #ai-btn:hover { opacity: 0.9; }
+        
+        #ai-chat-history {
+            margin-top: 15px;
+            background: var(--bg-color);
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .chat-bubble {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            max-width: 85%;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+        .chat-bubble.user {
+            background: #1e293b;
+            color: var(--text-color);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        .chat-bubble.assistant {
+            background: #121826;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .chart-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 15px;
+        }
+
+        @media (max-width: 900px) {
+            .chart-layout { grid-template-columns: 1fr; }
+        }
+
+        .tv-container {
+            width: 100%;
+            height: 500px;
+            background: #07090e;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .sidebar-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .stat-box {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .stat-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+        .stat-value { font-size: 1.3rem; font-weight: bold; margin-top: 4px; color: var(--accent-color); }
+
+        .bar-container { background: var(--border-color); height: 10px; border-radius: 5px; margin-top: 6px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 50%; background: var(--success-color); transition: width 0.5s ease; }
+
+        .stocks-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 16px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .stocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .stock-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .stock-card:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+
+        .stock-info {
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .stock-info .symbol { 
+            font-weight: bold; 
+            font-size: 1.05rem; 
+            color: var(--accent-color); 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stock-info .name { 
+            font-size: 0.85rem; 
+            color: var(--text-muted); 
+            margin-top: 2px; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stock-price-box { 
+            text-align: right; 
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .stock-price { 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            color: var(--text-muted); 
+            background: var(--bg-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .load-more-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .load-more-btn {
+            background-color: var(--card-bg);
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            padding: 10px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: 0.2s;
+        }
+
+        .load-more-btn:hover {
+            background-color: var(--accent-color);
+            color: #000;
+        }
+
+        .terms-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .terms-content {
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        .terms-content h3 {
+            color: var(--accent-color);
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+        }
+
+        .terms-content p, .terms-content ul {
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .terms-content ul { padding-left: 20px; }
+        .terms-content li { margin-bottom: 6px; }
+
+        footer {
+            max-width: 1200px;
+            margin: 40px auto 20px auto;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        footer h4 { color: #cbd5e1; margin-bottom: 8px; font-size: 0.9rem; }
+        footer p { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1 id="txt-title">stockexchanges</h1>
+            <div class="live-status">
+                <div class="pulse"></div>
+                <span id="txt-live-conn">Élő adatkapcsolat (<span id="latency-display">~15ms</span>): <strong id="clock">--:--:--</strong></span>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button onclick="netlifyIdentity.open()" class="auth-btn" id="authButton">Bejelentkezés / Regisztráció</button>
+            <div>
+                <label for="langSelect" id="txt-lang-label" style="font-size: 0.9rem;">Nyelv: </label>
+                <select id="langSelect" onchange="changeLanguage()">
+                    <option value="hu" selected>Magyar</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" id="btn-tab-crypto" onclick="switchView('crypto')">Kripto & Valuták (Élő API)</button>
+        <button class="tab-btn" id="btn-tab-stocks" onclick="switchView('stocks')">Részvények & Eszközök</button>
+        <button class="tab-btn terms-link-btn" id="btn-tab-terms" onclick="switchView('terms')">📄 Általános Szerződési Feltételek (ÁSZF)</button>
+    </div>
+
+    <!-- 1. NÉZET: KRIPTO, VALUTÁK, VÁLTÓ ÉS DINAMIKUS KOCKÁZATI DASHBOARD -->
+    <div class="container" id="crypto-view">
+        
+        <!-- DINAMIKUS KOCKÁZATI DASHBOARD KOMPONENS -->
+        <div class="card full-width" id="dynamic-risk-dashboard">
+            <h2>
+                <span id="risk-dash-title">🛡️ Dinamikus Kockázati Dashboard (Dynamic Risk Dashboard)</span>
+                <span class="badge-critical" id="riskBadgeStatus">Kritikus / Critical</span>
+            </h2>
+            <div class="risk-dashboard-grid">
+                <div class="risk-metric-card">
+                    <div class="risk-metric-title" id="lbl-total-port">Teljes Portfólió Érték</div>
+                    <div class="risk-metric-val" id="totalPortfolioVal">$50,850</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;"><span id="lbl-cash-text">Készpénz</span>: <span id="cashRatioVal">28%</span> | <span id="lbl-crypto-text">Kripto</span>: <span id="cryptoRatioVal">72%</span></div>
+                </div>
+                <div class="risk-metric-card">
+                    <div class="risk-metric-title" id="lbl-conc-risk">Koncentrációs Kockázat</div>
+                    <div class="risk-metric-val" id="concentrationVal" style="color: var(--danger-color);">72.0%</div>
+                    <div class="risk-progress-bg">
+                        <div class="risk-progress-fill" id="concentrationBar" style="width: 72%; background: var(--danger-color);"></div>
+                    </div>
+                </div>
+                <div class="risk-metric-card">
+                    <div class="risk-metric-title" id="lbl-vol-therm">Napi Volatilitás Hőmérő</div>
+                    <div class="risk-metric-val" id="val-vol-lvl" style="color: #fca5a5;">Magas / High</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;"><span id="lbl-var-text">Becsült VaR (95%)</span>: <strong id="varVal">-$2,288</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 id="txt-fiat-title">Világpiaci Valuták</h2>
+            <div class="rates-grid" id="fiatGrid"></div>
+        </div>
+
+        <div class="card">
+            <h2 id="txt-crypto-title">Kriptovaluták (Binance Élő API)</h2>
+            <div class="rates-grid" id="cryptoGrid"></div>
+        </div>
+
+        <div class="card full-width">
+            <h2 id="txt-converter-title">Univerzális Valuta- és Kriptováltó</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="converter-group">
+                    <label for="amount" id="txt-amount-label">Összeg:</label>
+                    <input type="number" id="amount" value="1" min="0" oninput="convert()">
+                </div>
+                <div class="converter-group">
+                    <label for="fromCurr" id="txt-from-label">Ebből:</label>
+                    <select id="fromCurr" onchange="convert()"></select>
+                </div>
+                <div class="converter-group">
+                    <label for="toCurr" id="txt-to-label">Ebbe:</label>
+                    <select id="toCurr" onchange="convert()"></select>
+                </div>
+            </div>
+            <div class="result-box" id="result">--</div>
+        </div>
+
+        <!-- AI Piaci Elemző Panel -->
+        <div class="card full-width">
+            <h2 style="border:none; padding:0; margin-bottom: 10px;" id="txt-ai-title">🤖 StockExchanges AI Asszisztens</h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0;" id="txt-ai-desc">Beszélgess az AI asszisztenssel, aki emlékszik a korábbi üzeneteidre és biztonságos keretek között elemezni tudja a portfóliódat is!</p>
+            
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
+                <input type="text" id="ai-user-input" placeholder="Írj az asszisztensnek (pl.: Szia, elemezd a portfóliómat!)..." onkeydown="if(event.key==='Enter') askAI()">
+                <button id="ai-btn" onclick="askAI()">Küldés</button>
+            </div>
+            
+            <div id="ai-chat-history">
+                <div class="chat-bubble assistant" id="ai-default-greeting">Üdvözöllek a StockExchanges terminálon! Én vagyok a személyes AI kereskedési asszisztensed. Kérdezz bátran a piacokról, valutákról vagy a portfóliódról!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. NÉZET: TRADINGVIEW PRO GRAFIKON ÉS ESZKÖZÖK -->
+    <div class="stocks-container" id="stocks-view">
+        <div class="card full-width">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <h2 style="margin:0; border:none; padding:0;" id="txt-markets-title">Élő Piacok & Eszközválasztó (250 Eszköz)</h2>
+                <div>
+                    <label style="color: var(--text-muted); font-size: 0.9rem; margin-right: 10px;" id="txt-choose-asset">Válassz eszközt:</label>
+                    <select id="assetSelect" onchange="changeAsset(this.value)">
+                        <optgroup label="Kriptovaluták" id="optgroup-crypto">
+                            <option value="BINANCE:BTCUSDT">Bitcoin (BTC/USDT)</option>
+                            <option value="BINANCE:ETHUSDT">Ethereum (ETH/USDT)</option>
+                            <option value="BINANCE:SOLUSDT">Solana (SOL/USDT)</option>
+                        </optgroup>
+                        <optgroup label="Tech Óriások" id="optgroup-tech">
+                            <option value="NASDAQ:AAPL">Apple Inc. (AAPL)</option>
+                            <option value="NASDAQ:MSFT">Microsoft Corp. (MSFT)</option>
+                            <option value="NASDAQ:GOOGL">Alphabet / Google (GOOGL)</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            
+            <input type="text" id="stockSearch" class="search-box" placeholder="Keresés a 250 eszköz között (név vagy szimbólum)..." oninput="filterStocks()">
+            
+            <div class="stocks-grid" id="stocksGrid"></div>
+
+            <div class="load-more-container" id="loadMoreContainer">
+                <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreItems()">Továbbiak betöltése (+30)</button>
+            </div>
+        </div>
+
+        <div class="card full-width">
+            <h2 id="chart-card-title">Valós Idejű Grafikon & Order Flow Adatok</h2>
+            <div class="chart-layout">
+                <div id="tv-chart-container" class="tv-container"></div>
+
+                <div class="sidebar-panel">
+                    <div class="stat-box">
+                        <div class="stat-title" id="live-price-label">Élő Árfolyam (API)</div>
+                        <div class="stat-value" id="livePriceDisplay">Betöltés...</div>
+                    </div>
+                    
+                    <div class="stat-box" id="orderflow-box">
+                        <div class="stat-title" id="txt-buyer-dom">Valós Vásárlói Dominancia (1h)</div>
+                        <div style="margin-top: 10px;">
+                            <div style="font-size: 0.8rem; display: flex; justify-content: space-between; color: #cbd5e1;">
+                                <span id="txt-vol-label">Vásárlói túlsúly</span>
+                                <span id="vol-percent">-- %</span>
+                            </div>
+                            <div class="bar-container">
+                                <div id="vol-bar" class="bar-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-box">
+                        <div class="stat-title" id="txt-datasource-title">Adatforrás Státusz</div>
+                        <div id="api-status" style="font-size: 0.85rem; color: var(--success-color); margin-top: 5px;">● Élő Binance & TradingView</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. NÉZET: ÁLTALÁNOS SZERZŐDÉSI FELTÉTELEK (ÁSZF) -->
+    <div class="terms-container" id="terms-view">
+        <div class="card full-width">
+            <h2 id="terms-main-title">Általános Szerződési Feltételek (ÁSZF)</h2>
+            <div class="terms-content" id="terms-content-body">
+                <h3 id="terms-h1">1. Bevezető rendelkezések</h3>
+                <p id="terms-p1">Jelen Általános Szerződési Feltételek (a továbbiakban: <strong>ÁSZF</strong>) szabályozzák a <strong>StockExchanges</strong> platform (a továbbiakban: <strong>Szolgáltató</strong>) által üzemeltetett weboldal, valamint a hozzá kapcsolódó API-szolgáltatások és funkciók felhasználói általi használatát. A platform használatával a Felhasználó elfogadja a jelen ÁSZF rendelkezéseit.</p>
+
+                <h3 id="terms-h2">2. Szolgáltató adatai és Elérhetőség</h3>
+                <p id="terms-p2">A platform üzemeltetőjével kapcsolatos hivatalos megkereséseket, észrevételeket vagy panaszokat az alábbi ügyfélszolgálati e-mail címen lehet benyújtani:<br><strong>E-mail: stockexchangesbusiness@gmail.com</strong></p>
+
+                <h3 id="terms-h3">3. Regisztráció és Felhasználói Fiókok</h3>
+                <p id="terms-p3">A platform egyes funkcióinak használatához regisztráció vagy fiók létrehozása szükséges. A Felhasználó köteles a regisztráció során valós és pontos adatokat megadni. A felhasználói fiók biztonságáért és a hozzáférési adatok titokban tartásáért kizárólag a Felhasználó felel.</p>
+
+                <h3 id="terms-h4">4. Szellemi tulajdonjogok</h3>
+                <p id="terms-p4">A StockExchanges felületén található minden tartalom (kódok, grafikai elemek, szövegek, elrendezések) a Szolgáltató szellemi tulajdonát képezi. Tilos azok bármilyen formájú, kereskedelmi célú másolása vagy terjesztése előzetes írásbeli engedély nélkül.</p>
+
+                <h3 id="terms-h5">5. Felelősségkorlátozás és Pénzügyi Nyilatkozat (Disclaimer)</h3>
+                <p id="terms-p5">A platformon megjelenített adatok (kripto, részvények, élő API árfolyamok) kizárólag tájékoztató és oktatási célt szolgálnak. A StockExchanges nem minősül befektetési vagy pénzügyi tanácsadónak. Az oldalon található információk alapján hozott döntésekért a Felhasználó saját maga vállal teljes körű felelősséget.</p>
+
+                <h3 id="terms-h6">6. Záró rendelkezések</h3>
+                <p id="terms-p6">A Szolgáltató fenntartja a jogot jelen ÁSZF egyoldalú módosítására. Kérdés vagy panasz esetén az alábbi címen állunk rendelkezésre: <strong>stockexchangesbusiness@gmail.com</strong>.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jogi Nyilatkozat Lábléc -->
+    <footer>
+        <h4 id="disc-header">Fontos Jogi és Pénzügyi Felelősségvállalási Nyilatkozat</h4>
+        <p id="disc-text-1">A StockExchanges egy információs, oktatási és elemzési célú terminál.</p>
+    </footer>
+
+    <script>
+        const userPortfolio = {
+            cash_balance: 14250,
+            assets: [
+                { symbol: "BTC", amount: 0.45, valueUSD: 27000 },
+                { symbol: "ETH", amount: 3.2, valueUSD: 9600 }
+            ]
+        };
+
+        const translations = {
+            hu: {
+                title: "stockexchanges",
+                liveConn: "Élő adatkapcsolat:",
+                langLabel: "Nyelv: ",
+                authBtnOut: "Bejelentkezés / Regisztráció",
+                tabCrypto: "Kripto & Valuták (Élő API)",
+                tabStocks: "Részvények & Eszközök",
+                tabTerms: "📄 Általános Szerződési Feltételek (ÁSZF)",
+                riskDashTitle: "🛡️ Dinamikus Kockázati Dashboard (Dynamic Risk Dashboard)",
+                lblTotalPort: "Teljes Portfólió Érték",
+                lblCashText: "Készpénz",
+                lblCryptoText: "Kripto",
+                lblConcRisk: "Koncentrációs Kockázat",
+                lblVolTherm: "Napi Volatilitás Hőmérő",
+                lblVarText: "Becsült VaR (95%)",
+                fiatTitle: "Világpiaci Valuták",
+                cryptoTitle: "Kriptovaluták (Binance Élő API)",
+                converterTitle: "Univerzális Valuta- és Kriptováltó",
+                amountLabel: "Összeg:",
+                fromLabel: "Ebből:",
+                toLabel: "Ebbe:",
+                aiTitle: "🤖 StockExchanges AI Asszisztens",
+                aiDesc: "Beszélgess az AI asszisztenssel, aki emlékszik a korábbi üzeneteidre és biztonságos keretek között elemezni tudja a portfóliódat is!",
+                aiPlaceholder: "Írj az asszisztensnek (pl.: Szia, elemezd a portfóliómat!)...",
+                aiBtn: "Küldés",
+                aiDefaultGreeting: "Üdvözöllek a StockExchanges terminálon! Én vagyok a személyes AI kereskedési asszisztensed. Kérdezz bátran a piacokról, valutákról vagy a portfóliódról!",
+                marketsTitle: "Élő Piacok & Eszközválasztó (250 Eszköz)",
+                chooseAsset: "Válassz eszközt:",
+                searchPlaceholder: "Keresés a 250 eszköz között (név vagy szimbólum)...",
+                chartTitle: "Valós Idejű Grafikon & Order Flow Adatok",
+                livePriceLabel: "Élő Árfolyam (API)",
+                buyerDom: "Valós Vásárlói Dominancia (1h)",
+                volLabel: "Vásárlói túlsúly",
+                dataSource: "Adatforrás Státusz",
+                apiStatusText: "● Élő Binance & TradingView",
+                loadMore: "Továbbiak betöltése (+30)",
+                liveChartData: "Élő Chart Adat",
+                loadingText: "Betöltés...",
+                discHeader: "Fontos Jogi és Pénzügyi Felelősségvállalási Nyilatkozat",
+                discText1: "A StockExchanges egy információs, oktatási és elemzési célú terminál.",
+                termsMainTitle: "Általános Szerződési Feltételek (ÁSZF)",
+                termsH1: "1. Bevezető rendelkezések",
+                termsP1: "Jelen Általános Szerződési Feltételek (a továbbiakban: ÁSZF) szabályozzák a StockExchanges platform (a továbbiakban: Szolgáltató) által üzemeltetett weboldal, valamint a hozzá kapcsolódó API-szolgáltatások és funkciók felhasználói általi használatát. A platform használatával a Felhasználó elfogadja a jelen ÁSZF rendelkezéseit.",
+                termsH2: "2. Szolgáltató adatai és Elérhetőség",
+                termsP2: "A platform üzemeltetőjével kapcsolatos hivatalos megkereséseket, észrevételeket vagy panaszokat az alábbi ügyfélszolgálati e-mail címen lehet benyújtani:<br><strong>E-mail: stockexchangesbusiness@gmail.com</strong>",
+                termsH3: "3. Regisztráció és Felhasználói Fiókok",
+                termsP3: "A platform egyes funkcióinak használatához regisztráció vagy fiók létrehozása szükséges. A Felhasználó köteles a regisztráció során valós és pontos adatokat megadni. A felhasználói fiók biztonságáért és a hozzáférési adatok titokban tartásáért kizárólag a Felhasználó felel.",
+                termsH4: "4. Szellemi tulajdonjogok",
+                termsP4: "A StockExchanges felületén található minden tartalom (kódok, grafikai elemek, szövegek, elrendezések) a Szolgáltató szellemi tulajdonát képezi. Tilos azok bármilyen formájú, kereskedelmi célú másolása vagy terjesztése előzetes írásbeli engedély nélkül.",
+                termsH5: "5. Felelősségkorlátozás és Pénzügyi Nyilatkozat (Disclaimer)",
+                termsP5: "A platformon megjelenített adatok (kripto, részvények, élő API árfolyamok) kizárólag tájékoztató és oktatási célt szolgálnak. A StockExchanges nem minősül befektetési vagy pénzügyi tanácsadónak. Az oldalon található információk alapján hozott döntésekért a Felhasználó saját maga vállal teljes körű felelősséget.",
+                termsH6: "6. Záró rendelkezések",
+                termsP6: "A Szolgáltató fenntartja a jogot jelen ÁSZF egyoldalú módosítására. Kérdés vagy panasz esetén az alábbi címen állunk rendelkezésre: <strong>stockexchangesbusiness@gmail.com</strong>."
+            },
+            en: {
+                title: "stockexchanges",
+                liveConn: "Live connection:",
+                langLabel: "Language: ",
+                authBtnOut: "Login / Register",
+                tabCrypto: "Crypto & Currencies (Live API)",
+                tabStocks: "Stocks & Assets",
+                tabTerms: "📄 Terms and Conditions (ToS)",
+                riskDashTitle: "🛡️ Dynamic Risk Dashboard",
+                lblTotalPort: "Total Portfolio Value",
+                lblCashText: "Cash",
+                lblCryptoText: "Crypto",
+                lblConcRisk: "Concentration Risk",
+                lblVolTherm: "Daily Volatility Thermometer",
+                lblVarText: "Estimated VaR (95%)",
+                fiatTitle: "Global Currencies",
+                cryptoTitle: "Cryptocurrencies (Binance Live API)",
+                converterTitle: "Universal Currency & Crypto Converter",
+                amountLabel: "Amount:",
+                fromLabel: "From:",
+                toLabel: "To:",
+                aiTitle: "🤖 StockExchanges AI Assistant",
+                aiDesc: "Chat with the AI assistant who remembers previous messages and can safely analyze your portfolio!",
+                aiPlaceholder: "Message the assistant (e.g., Hi, analyze my portfolio!)...",
+                aiBtn: "Send",
+                aiDefaultGreeting: "Welcome to the StockExchanges terminal! I am your personal AI trading assistant. Feel free to ask about markets, currencies, or your portfolio!",
+                marketsTitle: "Live Markets & Asset Selector (250 Assets)",
+                chooseAsset: "Choose asset:",
+                searchPlaceholder: "Search across 250 assets (name or symbol)...",
+                chartTitle: "Real-Time Chart & Order Flow Data",
+                livePriceLabel: "Live Price (API)",
+                buyerDom: "Real Buyer Dominance (1h)",
+                volLabel: "Buyer dominance",
+                dataSource: "Data Source Status",
+                apiStatusText: "● Live Binance & TradingView",
+                loadMore: "Load more (+30)",
+                liveChartData: "Live Chart Data",
+                loadingText: "Loading...",
+                discHeader: "Important Legal and Financial Disclaimer",
+                discText1: "StockExchanges is an informational, educational, and analytical terminal.",
+                termsMainTitle: "Terms and Conditions (ToS)",
+                termsH1: "1. Introductory Provisions",
+                termsP1: "These Terms and Conditions govern the use of the StockExchanges platform and related API services provided by the Service Provider. By using the platform, the User accepts these terms.",
+                termsH2: "2. Service Provider Details & Contact",
+                termsP2: "Official inquiries, feedback, or complaints regarding the platform can be submitted via the following customer service email:<br><strong>Email: stockexchangesbusiness@gmail.com</strong>",
+                termsH3: "3. Registration and User Accounts",
+                termsP3: "Registration or account creation may be required to access certain features. The User must provide accurate information and is solely responsible for maintaining account security.",
+                termsH4: "4. Intellectual Property Rights",
+                termsP4: "All content on the StockExchanges interface is the intellectual property of the Service Provider. Commercial copying or redistribution without prior written consent is strictly prohibited.",
+                termsH5: "5. Limitation of Liability and Financial Disclaimer",
+                termsP5: "Data displayed on the platform is for informational and educational purposes only. StockExchanges is not a financial advisor. Users bear full responsibility for any trading decisions made.",
+                termsH6: "6. Final Provisions",
+                termsP6: "The Service Provider reserves the right to modify these terms. For questions or support, contact us at: <strong>stockexchangesbusiness@gmail.com</strong>."
+            }
+        };
+
+        const rates = {
+            EUR: { name: { hu: "Euro", en: "Euro" }, symbol: "€", rate: 1.0, type: "fiat" },
+            USD: { name: { hu: "Amerikai Dollár", en: "US Dollar" }, symbol: "$", rate: 1.08, type: "fiat" },
+            HUF: { name: { hu: "Magyar Forint", en: "Hungarian Forint" }, symbol: "Ft", rate: 395.20, type: "fiat" },
+            GBP: { name: { hu: "Angol Font", en: "British Pound" }, symbol: "£", rate: 0.85, type: "fiat" },
+            CHF: { name: { hu: "Svájci Frank", en: "Swiss Franc" }, symbol: "CHF", rate: 0.97, type: "fiat" },
+            JPY: { name: { hu: "Japán Jen", en: "Japanese Yen" }, symbol: "¥", rate: 160.50, type: "fiat" },
+            BTC: { name: { hu: "Bitcoin (BTC)", en: "Bitcoin (BTC)" }, symbol: "₿", rate: 60000.00, type: "crypto" },
+            ETH: { name: { hu: "Ethereum (ETH)", en: "Ethereum (ETH)" }, symbol: "Ξ", rate: 3000.00, type: "crypto" },
+            SOL: { name: { hu: "Solana (SOL)", en: "Solana (SOL)" }, symbol: "SOL", rate: 130.00, type: "crypto" },
+            XRP: { name: { hu: "Ripple (XRP)", en: "Ripple (XRP)" }, symbol: "XRP", rate: 0.50, type: "crypto" }
+        };
+
+        // Pontosan 250 darabos egyedi eszközlista generálás (tükrözi a valós piaci instrumentumokat)
+        const stocksQuickList = [];
+        const categories = ["NASDAQ", "NYSE", "BSE", "Crypto", "Xetra", "LSE"];
+        const baseNames = [
+            "Apple", "Microsoft", "Amazon", "Alphabet", "Nvidia", "Meta", "Tesla", "Berkshire", "Broadcom", "JPMorgan",
+            "Eli Lilly", "Visa", "UnitedHealth", "ExxonMobil", "Mastercard", "Home Depot", "Procter & Gamble", "Netflix",
+            "J&J", "Chevron", "AMD", "Adobe", "Salesforce", "PepsiCo", "Costco", "Coca-Cola", "Bank of America", "T-Mobile",
+            "Intel", "IBM", "Oracle", "Cisco", "Accenture", "Abbott", "Verizon", "Comcast", "Disney", "Nike", "Pfizer",
+            "Qualcomm", "Uber", "Pepsico", "GE Aerospace", "Intuit", "AMEX", "McDonald's", "CAT", "Boeing", "TxInstruments",
+            "Honeywell", "Sony", "Toyota", "Shell", "Unilever", "BP", "SAP", "Siemens", "Allianz", "Volkswagen", "L'Oreal"
+        ];
+
+        for (let i = 1; i <= 250; i++) {
+            const nameBase = baseNames[(i - 1) % baseNames.length];
+            const variant = Math.floor((i - 1) / baseNames.length) + 1;
+            const stockName = variant === 1 ? nameBase : `${nameBase} Grp ${variant}`;
+            const tickerSym = `EQ:${nameBase.toUpperCase().replace(/[^A-Z]/g, '')}${i}`;
+            const marketSub = categories[(i - 1) % categories.length];
+            const randomPrice = (Math.random() * 400 + 10).toFixed(2);
+
+            stocksQuickList.push({
+                n: stockName,
+                s: tickerSym,
+                sub: marketSub,
+                p: `$${randomPrice}`
+            });
+        }
+
+        let displayedCount = 10;
+        const step = 10;
+        let filteredStocks = [...stocksQuickList];
+        let chatHistory = [];
+        let developerMode = false; // Titkos fejlesztői mód státusz
+
+        function updateRiskDashboard() {
+            const totalAssetsVal = userPortfolio.assets.reduce((sum, item) => sum + item.valueUSD, 0);
+            const totalPortfolioVal = userPortfolio.cash_balance + totalAssetsVal;
+            
+            const cashRatio = (userPortfolio.cash_balance / totalPortfolioVal) * 100;
+            const cryptoRatio = (totalAssetsVal / totalPortfolioVal) * 100;
+
+            document.getElementById('totalPortfolioVal').innerText = `$${totalPortfolioVal.toLocaleString()}`;
+            document.getElementById('cashRatioVal').innerText = `${cashRatio.toFixed(0)}%`;
+            document.getElementById('cryptoRatioVal').innerText = `${cryptoRatio.toFixed(0)}%`;
+            document.getElementById('concentrationVal').innerText = `${cryptoRatio.toFixed(1)}%`;
+            
+            const bar = document.getElementById('concentrationBar');
+            bar.style.width = `${cryptoRatio}%`;
+
+            const badge = document.getElementById('riskBadgeStatus');
+            const lang = document.getElementById('langSelect').value;
+            if (cryptoRatio > 50) {
+                badge.className = "badge-critical";
+                badge.innerText = lang === 'hu' ? "Kritikus / Critical" : "Critical / Kritikus";
+                bar.style.background = "var(--danger-color)";
+            } else {
+                badge.className = "";
+                badge.style.background = "var(--success-color)";
+                badge.style.color = "#000";
+                badge.innerText = lang === 'hu' ? "Stabil / Stable" : "Stable / Stabil";
+                bar.style.background = "var(--success-color)";
+            }
+
+            const dailyVolatility = 0.045;
+            const var95 = totalPortfolioVal * dailyVolatility * 1.645;
+            document.getElementById('varVal').innerText = `-$${Math.round(var95).toLocaleString()}`;
+        }
+
+        async function fetchLivePrices() {
+            const startTime = performance.now();
+            try {
+                const resBTC = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+                const dataBTC = await resBTC.json();
+                if (dataBTC.price) rates.BTC.rate = parseFloat(dataBTC.price);
+
+                const resETH = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT');
+                const dataETH = await resETH.json();
+                if (dataETH.price) rates.ETH.rate = parseFloat(dataETH.price);
+
+                const endTime = performance.now();
+                const latency = Math.round(endTime - startTime);
+                document.getElementById('latency-display').innerText = `~${latency}ms`;
+
+                updateGrids();
+                convert();
+            } catch (error) {
+                console.error("Hiba az élő árfolyamok lekérése közben:", error);
+            }
+        }
+
+        let binanceInterval = null;
+        async function fetchBinanceData(symbol) {
+            const lang = document.getElementById('langSelect').value;
+            const t = translations[lang];
+
+            if (symbol === "BINANCE:BTCUSDT") {
+                try {
+                    const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+                    const data = await res.json();
+                    document.getElementById('livePriceDisplay').innerText = parseFloat(data.price).toLocaleString() + " $";
+
+                    const klineRes = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1');
+                    const kline = await klineRes.json();
+                    const totalVol = parseFloat(kline[0][5]);
+                    const buyVol = parseFloat(kline[0][9]);
+                    const ratio = (buyVol / totalVol) * 100;
+
+                    document.getElementById('vol-bar').style.width = ratio.toFixed(1) + "%";
+                    document.getElementById('vol-percent').innerText = ratio.toFixed(1) + "%";
+                    document.getElementById('orderflow-box').style.display = "block";
+                } catch (e) {
+                    console.error("Binance hiba:", e);
+                }
+            } else {
+                document.getElementById('livePriceDisplay').innerText = t.liveChartData;
+                document.getElementById('orderflow-box').style.display = "none";
+            }
+        }
+
+        function switchView(view) {
+            const cryptoView = document.getElementById('crypto-view');
+            const stocksView = document.getElementById('stocks-view');
+            const termsView = document.getElementById('terms-view');
+            
+            const btnCrypto = document.getElementById('btn-tab-crypto');
+            const btnStocks = document.getElementById('btn-tab-stocks');
+
+            cryptoView.style.display = 'none';
+            stocksView.style.display = 'none';
+            termsView.style.display = 'none';
+
+            btnCrypto.classList.remove('active');
+            btnStocks.classList.remove('active');
+
+            if (view === 'crypto') {
+                cryptoView.style.display = 'grid';
+                btnCrypto.classList.add('active');
+            } else if (view === 'stocks') {
+                stocksView.style.display = 'flex';
+                btnStocks.classList.add('active');
+                renderStocks();
+                if (!window.tvWidgetInitialized) {
+                    initTradingView("BINANCE:BTCUSDT");
+                    window.tvWidgetInitialized = true;
+                }
+            } else if (view === 'terms') {
+                termsView.style.display = 'flex';
+            }
+        }
+
+        function initTradingView(symbol) {
+            if (symbol.includes('_')) {
+                symbol = "BINANCE:BTCUSDT";
+            }
+            document.getElementById('tv-chart-container').innerHTML = "";
+            const lang = document.getElementById('langSelect').value;
+            new TradingView.widget({
+                "container_id": "tv-chart-container",
+                "symbol": symbol,
+                "interval": "D",
+                "timezone": "Europe/Budapest",
+                "theme": "dark",
+                "style": "1",
+                "locale": lang,
+                "toolbar_bg": "#121826",
+                "enable_publishing": false,
+                "allow_symbol_change": false,
+                "save_image": false,
+                "autosize": true
+            });
+            fetchBinanceData(symbol);
+            if (binanceInterval) clearInterval(binanceInterval);
+            if (symbol === "BINANCE:BTCUSDT") {
+                binanceInterval = setInterval(() => fetchBinanceData(symbol), 10000);
+            }
+        }
+
+        function changeAsset(symbol) {
+            document.getElementById('assetSelect').value = symbol;
+            initTradingView(symbol);
+        }
+
+        function renderStocks() {
+            const grid = document.getElementById('stocksGrid');
+            const fragment = document.createDocumentFragment();
+            const itemsToRender = filteredStocks.slice(0, displayedCount);
+
+            itemsToRender.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'stock-card';
+                card.onclick = () => changeAsset(item.s);
+                card.innerHTML = `
+                    <div class="stock-info">
+                        <div class="symbol">${item.n}</div>
+                        <div class="name">${item.sub} (${item.s})</div>
+                    </div>
+                    <div class="stock-price-box">
+                        <div class="stock-price">${item.p}</div>
+                    </div>
+                `;
+                fragment.appendChild(card);
+            });
+
+            grid.innerHTML = '';
+            grid.appendChild(fragment);
+
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+            loadMoreContainer.style.display = displayedCount >= filteredStocks.length ? 'none' : 'block';
+        }
+
+        function loadMoreItems() {
+            displayedCount += step;
+            renderStocks();
+        }
+
+        let searchTimeout;
+        function filterStocks() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const query = document.getElementById('stockSearch').value.toLowerCase();
+                filteredStocks = stocksQuickList.filter(s => s.n.toLowerCase().includes(query) || s.sub.toLowerCase().includes(query) || s.s.toLowerCase().includes(query));
+                displayedCount = 10;
+                renderStocks();
+            }, 150);
+        }
+
+        function updateGrids() {
+            const lang = document.getElementById('langSelect').value;
+            const fiatGrid = document.getElementById('fiatGrid');
+            const cryptoGrid = document.getElementById('cryptoGrid');
+            fiatGrid.innerHTML = '';
+            cryptoGrid.innerHTML = '';
+
+            for (const [code, data] of Object.entries(rates)) {
+                let decimals = data.type === 'crypto' ? 2 : (data.rate < 1 ? 4 : 2);
+                let langMap = data.name[lang] || data.name['en'];
+                let html = `
+                    <div class="rate-item">
+                        <span class="rate-name">${langMap}</span>
+                        <span class="rate-value">${data.symbol} ${data.rate.toFixed(decimals)}</span>
+                    </div>
+                `;
+                if (data.type === 'fiat') fiatGrid.innerHTML += html;
+                else cryptoGrid.innerHTML += html;
+            }
+        }
+
+        function populateDropdowns() {
+            const lang = document.getElementById('langSelect').value;
+            const fromSelect = document.getElementById('fromCurr');
+            const toSelect = document.getElementById('toCurr');
+            
+            const currentFrom = fromSelect.value;
+            const currentTo = toSelect.value;
+
+            fromSelect.innerHTML = '';
+            toSelect.innerHTML = '';
+
+            for (const [code, data] of Object.entries(rates)) {
+                let langMap = data.name[lang] || data.name['en'];
+                const displayName = `${langMap} (${code})`;
+                fromSelect.innerHTML += `<option value="${code}">${displayName}</option>`;
+                toSelect.innerHTML += `<option value="${code}">${displayName}</option>`;
+            }
+
+            if (currentFrom) fromSelect.value = currentFrom;
+            if (currentTo) toSelect.value = currentTo;
+            else toSelect.value = 'HUF';
+        }
+
+        function convert() {
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const from = document.getElementById('fromCurr').value;
+            const to = document.getElementById('toCurr').value;
+            if (!rates[from] || !rates[to]) return;
+            let valueInEur = amount / rates[from].rate;
+            let finalResult = valueInEur * rates[to].rate;
+            let decimals = (rates[to].type === 'crypto' || finalResult < 1) ? 4 : 2;
+            document.getElementById('result').innerText = `${rates[to].symbol} ${finalResult.toFixed(decimals)}`;
+        }
+
+        function changeLanguage() {
+            const lang = document.getElementById('langSelect').value;
+            const t = translations[lang];
+
+            document.getElementById('txt-title').innerText = t.title;
+            document.getElementById('txt-lang-label').innerText = t.langLabel;
+            
+            const user = netlifyIdentity.currentUser();
+            if (!user) {
+                document.getElementById('authButton').innerText = t.authBtnOut;
+            }
+
+            document.getElementById('btn-tab-crypto').innerText = t.tabCrypto;
+            document.getElementById('btn-tab-stocks').innerText = t.tabStocks;
+            document.getElementById('btn-tab-terms').innerText = t.tabTerms;
+
+            document.getElementById('risk-dash-title').innerText = t.riskDashTitle;
+            document.getElementById('lbl-total-port').innerText = t.lblTotalPort;
+            document.getElementById('lbl-cash-text').innerText = t.lblCashText;
+            document.getElementById('lbl-crypto-text').innerText = t.lblCryptoText;
+            document.getElementById('lbl-conc-risk').innerText = t.lblConcRisk;
+            document.getElementById('lbl-vol-therm').innerText = t.lblVolTherm;
+            document.getElementById('lbl-var-text').innerText = t.lblVarText;
+
+            document.getElementById('txt-fiat-title').innerText = t.fiatTitle;
+            document.getElementById('txt-crypto-title').innerText = t.cryptoTitle;
+            document.getElementById('txt-converter-title').innerText = t.converterTitle;
+            document.getElementById('txt-amount-label').innerText = t.amountLabel;
+            document.getElementById('txt-from-label').innerText = t.fromLabel;
+            document.getElementById('txt-to-label').innerText = t.toLabel;
+            
+            document.getElementById('txt-ai-title').innerText = t.aiTitle;
+            document.getElementById('txt-ai-desc').innerText = t.aiDesc;
+            document.getElementById('ai-user-input').placeholder = t.aiPlaceholder;
+            document.getElementById('ai-btn').innerText = t.aiBtn;
+
+            document.getElementById('txt-markets-title').innerText = t.marketsTitle;
+            document.getElementById('txt-choose-asset').innerText = t.chooseAsset;
+            document.getElementById('stockSearch').placeholder = t.searchPlaceholder;
+            document.getElementById('chart-card-title').innerText = t.chartTitle;
+            document.getElementById('live-price-label').innerText = t.livePriceLabel;
+            document.getElementById('txt-buyer-dom').innerText = t.buyerDom;
+            document.getElementById('txt-vol-label').innerText = t.volLabel;
+            document.getElementById('txt-datasource-title').innerText = t.dataSource;
+            document.getElementById('api-status').innerText = t.apiStatusText;
+            document.getElementById('loadMoreBtn').innerText = t.loadMore;
+
+            document.getElementById('terms-main-title').innerText = t.termsMainTitle;
+            document.getElementById('terms-h1').innerText = t.termsH1;
+            document.getElementById('terms-p1').innerText = t.termsP1;
+            document.getElementById('terms-h2').innerText = t.termsH2;
+            document.getElementById('terms-p2').innerText = t.termsP2;
+            document.getElementById('terms-h3').innerText = t.termsH3;
+            document.getElementById('terms-p3').innerText = t.termsP3;
+            document.getElementById('terms-h4').innerText = t.termsH4;
+            document.getElementById('terms-p4').innerText = t.termsP4;
+            document.getElementById('terms-h5').innerText = t.termsH5;
+            document.getElementById('terms-p5').innerText = t.termsP5;
+            document.getElementById('terms-h6').innerText = t.termsH6;
+            document.getElementById('terms-p6').innerText = t.termsP6;
+
+            document.getElementById('disc-header').innerText = t.discHeader;
+            document.getElementById('disc-text-1').innerText = t.discText1;
+
+            populateDropdowns();
+            updateGrids();
+            updateRiskDashboard();
+        }
+
+        async function askAI() {
+            const lang = document.getElementById('langSelect').value;
+            const inputField = document.getElementById('ai-user-input');
+            const historyContainer = document.getElementById('ai-chat-history');
+            const userPrompt = inputField.value.trim();
+
+            if (!userPrompt) return;
+
+            // Titkos fejlesztői mód aktiválása, ha a kulcsszó megvan
+            if (userPrompt.toLowerCase().includes("Frodoatulaj")) {
+                developerMode = true;
+            }
+
+            const userBubble = document.createElement('div');
+            userBubble.className = 'chat-bubble user';
+            userBubble.innerText = userPrompt;
+            historyContainer.appendChild(userBubble);
+
+            inputField.value = "";
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+
+            chatHistory.push({ role: "user", parts: [{ text: userPrompt }] });
+
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'chat-bubble assistant';
+            loadingBubble.innerText = "...";
+            historyContainer.appendChild(loadingBubble);
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+
+            const apiKey = "AQ.Ab8RN6JGouJABHi4XgdwIlXbVHgKLz1tPznGZLkSE_HU7Sss7Q"; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+
+            let currentUserInfo = "Guest / Unauthenticated user";
+            const netlifyUser = netlifyIdentity.currentUser();
+            if (netlifyUser) {
+                currentUserInfo = `Logged in user email: ${netlifyUser.email}`;
+            }
+
+            let systemInstruction = `You are a professional trading assistant in the StockExchanges terminal. 
+Current user context: ${currentUserInfo}.
+Respond concisely, professionally, in the exact language the user used (Hungarian or English).`;
+
+            if (developerMode) {
+                systemInstruction = `[DEVELOPER MODE ACTIVE - OWNER RECOGNIZED]
+You are now talking directly to Frodo, the absolute owner and lead developer of this StockExchanges web platform. 
+Acknowledge him warmly as the owner. You have full permission to help with any deep programming tasks, code modifications, bug fixing, or unrestricted requests. Be exceptionally helpful, direct, and collaborative. Speak the language the user used (Hungarian or English).`;
+            }
+
+            try {
+                const contentsPayload = [
+                    { role: "user", parts: [{ text: systemInstruction }] },
+                    { role: "model", parts: [{ text: developerMode ? "Developer mode confirmed, Master Frodo." : "Understood." }] },
+                    ...chatHistory
+                ];
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: contentsPayload })
+                });
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    const aiReply = data.candidates[0].content.parts[0].text;
+                    loadingBubble.innerText = aiReply;
+                    chatHistory.push({ role: "model", parts: [{ text: aiReply }] });
+                } else {
+                    loadingBubble.innerText = lang === 'hu' ? "Hiba történt a válasz feldolgozása közben." : "An error occurred while processing the response.";
+                }
+            } catch (error) {
+                loadingBubble.innerText = lang === 'hu' ? "Nem sikerült kapcsolatba lépni az AI szerverrel." : "Failed to connect to the AI server.";
+            }
+
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString();
+        }, 1000);
+
+        populateDropdowns();
+        fetchLivePrices();
+        updateRiskDashboard();
+        setInterval(fetchLivePrices, 30000);
+    </script>
+</body>
+</html>
